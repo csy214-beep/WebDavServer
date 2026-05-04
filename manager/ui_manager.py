@@ -366,6 +366,9 @@ class WebDAVManagerUI(QMainWindow):
             QMessageBox.critical(self, "Start Failed", error_msg)
 
         self.update_button_states()
+        # 更新托盘菜单状态
+        if self.tray_manager:
+            self.tray_manager.update_menu_state()
 
     def stop_service(self):
         """停止服务"""
@@ -388,6 +391,9 @@ class WebDAVManagerUI(QMainWindow):
                 self.notification.show_error(f"Failed to stop service: {error_msg}")
 
         self.update_button_states()
+        # 更新托盘菜单状态
+        if self.tray_manager:
+            self.tray_manager.update_menu_state()
 
     def copy_url(self):
         """复制访问URL到剪贴板"""
