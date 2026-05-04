@@ -30,6 +30,7 @@ class WebDAVManagerUI(QMainWindow):
         self.config_manager = config_manager
         self.service_manager = service_manager
         self.notification = None  # 延迟初始化
+        self.tray_manager = None  # 托盘管理器引用
 
         self.init_ui()
         self.load_config_to_ui()
@@ -38,10 +39,24 @@ class WebDAVManagerUI(QMainWindow):
         # 初始化通知管理器(在UI创建后)
         self.notification = NotificationManager(self.centralWidget())
 
+    def set_tray_manager(self, tray_manager):
+        """设置托盘管理器引用"""
+        self.tray_manager = tray_manager
+
+    def closeEvent(self, event):
+        """关闭窗口时最小化到托盘"""
+        if self.tray_manager and self.tray_manager.tray_icon.isVisible():
+            self.hide()
+            event.ignore()
+            if self.notification:
+                self.notification.show_info("Program has been minimized to the system tray")
+        else:
+            event.accept()
+
     def init_ui(self):
         """初始化UI界面"""
         # 设置窗口属性
-        self.setWindowTitle("WebDAV 服务管理器")
+        self.setWindowTitle("WebDAV Service Manager")
         self.setFixedSize(550, 480)
 
         # 创建中心部件
@@ -66,7 +81,7 @@ class WebDAVManagerUI(QMainWindow):
         main_layout.addLayout(helper_layout)
 
         # 状态标签
-        self.status_label = QLabel("状态: 服务未启动")
+        self.status_label = QLabel("Status: Service not running")
         self.status_label.setStyleSheet("color: #666; font-size: 12px;")
         main_layout.addWidget(self.status_label)
 
@@ -75,17 +90,17 @@ class WebDAVManagerUI(QMainWindow):
 
     def create_config_group(self):
         """创建配置区域"""
-        group = QGroupBox("服务配置")
+        group = QGroupBox("Service Configuration")
         layout = QVBoxLayout()
         layout.setSpacing(12)
 
         # 共享目录
         dir_layout = QHBoxLayout()
-        dir_label = QLabel("共享目录:")
-        dir_label.setFixedWidth(80)
+        dir_label = QLabel("Share Directory:")
+        dir_label.setFixedWidth(100)
         self.dir_edit = QLineEdit()
-        self.dir_edit.setPlaceholderText("选择要共享的文件夹")
-        self.dir_browse_btn = QPushButton("浏览")
+        self.dir_edit.setPlaceholderText("Select folder to share")
+        self.dir_browse_btn = QPushButton("Browse")
         self.dir_browse_btn.setFixedWidth(80)
         self.dir_browse_btn.clicked.connect(self.browse_directory)
         dir_layout.addWidget(dir_label)
@@ -95,13 +110,13 @@ class WebDAVManagerUI(QMainWindow):
 
         # 服务端口
         port_layout = QHBoxLayout()
-        port_label = QLabel("服务端口:")
-        port_label.setFixedWidth(80)
+        port_label = QLabel("Service Port:")
+        port_label.setFixedWidth(100)
         self.port_edit = QLineEdit()
         self.port_edit.setPlaceholderText("1025-65535")
         self.port_edit.setValidator(QIntValidator(1025, 65535))
         self.port_edit.setFixedWidth(120)
-        port_hint = QLabel("(建议: 8088-8099)")
+        port_hint = QLabel("(Recommended: 8088-8099)")
         port_hint.setStyleSheet("color: #999; font-size: 11px;")
         port_layout.addWidget(port_label)
         port_layout.addWidget(self.port_edit)
@@ -111,21 +126,21 @@ class WebDAVManagerUI(QMainWindow):
 
         # 访问账号
         user_layout = QHBoxLayout()
-        user_label = QLabel("访问账号:")
-        user_label.setFixedWidth(80)
+        user_label = QLabel("Username:")
+        user_label.setFixedWidth(100)
         self.user_edit = QLineEdit()
-        self.user_edit.setPlaceholderText("设置登录账号")
+        self.user_edit.setPlaceholderText("Set login username")
         user_layout.addWidget(user_label)
         user_layout.addWidget(self.user_edit)
         layout.addLayout(user_layout)
 
         # 访问密码
         pass_layout = QHBoxLayout()
-        pass_label = QLabel("访问密码:")
-        pass_label.setFixedWidth(80)
+        pass_label = QLabel("Password:")
+        pass_label.setFixedWidth(100)
         self.pass_edit = QLineEdit()
         self.pass_edit.setEchoMode(QLineEdit.Password)
-        self.pass_edit.setPlaceholderText("设置登录密码")
+        self.pass_edit.setPlaceholderText("Set login password")
         pass_layout.addWidget(pass_label)
         pass_layout.addWidget(self.pass_edit)
         layout.addLayout(pass_layout)
@@ -139,7 +154,7 @@ class WebDAVManagerUI(QMainWindow):
         layout.setSpacing(10)
 
         # 应用配置按钮
-        self.apply_btn = QPushButton("应用配置")
+        self.apply_btn = QPushButton("Apply Config")
         self.apply_btn.setFixedHeight(40)
         self.apply_btn.setStyleSheet("""
             QPushButton {
@@ -160,7 +175,7 @@ class WebDAVManagerUI(QMainWindow):
         self.apply_btn.clicked.connect(self.apply_config)
 
         # 启动服务按钮
-        self.start_btn = QPushButton("启动服务")
+        self.start_btn = QPushButton("Start Service")
         self.start_btn.setFixedHeight(40)
         self.start_btn.setStyleSheet("""
             QPushButton {
@@ -181,7 +196,7 @@ class WebDAVManagerUI(QMainWindow):
         self.start_btn.clicked.connect(self.start_service)
 
         # 停止服务按钮
-        self.stop_btn = QPushButton("停止服务")
+        self.stop_btn = QPushButton("Stop Service")
         self.stop_btn.setFixedHeight(40)
         self.stop_btn.setStyleSheet("""
             QPushButton {
@@ -213,15 +228,15 @@ class WebDAVManagerUI(QMainWindow):
         layout.setSpacing(10)
 
         # 复制地址按钮
-        self.copy_url_btn = QPushButton("复制访问地址")
+        self.copy_url_btn = QPushButton("Copy Access URL")
         self.copy_url_btn.clicked.connect(self.copy_url)
 
         # 打开目录按钮
-        self.open_dir_btn = QPushButton("打开共享目录")
+        self.open_dir_btn = QPushButton("Open Share Directory")
         self.open_dir_btn.clicked.connect(self.open_directory)
 
         # 查看日志按钮
-        self.view_log_btn = QPushButton("查看日志")
+        self.view_log_btn = QPushButton("View Log")
         self.view_log_btn.clicked.connect(self.view_log)
 
         # 统一样式
@@ -256,11 +271,11 @@ class WebDAVManagerUI(QMainWindow):
         """浏览选择目录"""
         current_dir = self.dir_edit.text() or os.path.expanduser("~")
         directory = QFileDialog.getExistingDirectory(
-            self, "选择共享目录", current_dir
+            self, "Select Share Directory", current_dir
         )
         if directory:
             self.dir_edit.setText(directory)
-            logger.info(f"用户选择目录: {directory}")
+            logger.info(f"User selected directory: {directory}")
 
     def load_config_to_ui(self):
         """加载配置到UI"""
@@ -269,7 +284,7 @@ class WebDAVManagerUI(QMainWindow):
         self.port_edit.setText(str(config.get('port', 8088)))
         self.user_edit.setText(config.get('username', ''))
         self.pass_edit.setText(config.get('password', ''))
-        logger.info("配置已加载到界面")
+        logger.info("Config loaded to UI")
 
     def save_ui_to_config(self):
         """保存UI配置到配置管理器"""
@@ -293,9 +308,9 @@ class WebDAVManagerUI(QMainWindow):
         if not is_valid:
             error_msg = "\n".join(errors)
             if self.notification:
-                self.notification.show_error(f"配置验证失败:\n{errors[0]}")
-            QMessageBox.warning(self, "配置验证失败", error_msg)
-            logger.warning(f"配置验证失败: {error_msg}")
+                self.notification.show_error(f"Config validation failed:\n{errors[0]}")
+            QMessageBox.warning(self, "Config Validation Failed", error_msg)
+            logger.warning(f"Config validation failed: {error_msg}")
             return
 
         # 检查端口
@@ -307,11 +322,11 @@ class WebDAVManagerUI(QMainWindow):
         # 保存配置
         if self.config_manager.save_config():
             if self.notification:
-                self.notification.show_success("配置已保存")
+                self.notification.show_success("Config saved successfully")
             self.update_button_states()
         else:
             if self.notification:
-                self.notification.show_error("配置保存失败")
+                self.notification.show_error("Failed to save config")
 
     def start_service(self):
         """启动服务"""
@@ -321,7 +336,7 @@ class WebDAVManagerUI(QMainWindow):
 
         if not is_valid:
             if self.notification:
-                self.notification.show_error(f"配置无效: {errors[0]}")
+                self.notification.show_error(f"Invalid config: {errors[0]}")
             return
 
         # 保存配置
@@ -329,7 +344,7 @@ class WebDAVManagerUI(QMainWindow):
 
         # 显示启动提示
         if self.notification:
-            self.notification.show_info("正在启动服务...", duration=2000)
+            self.notification.show_info("Starting WebDAV service...", duration=2000)
 
         # 启动服务
         config = self.config_manager.get_all_config()
@@ -342,20 +357,20 @@ class WebDAVManagerUI(QMainWindow):
         """显示启动结果"""
         if success:
             if self.notification:
-                self.notification.show_success("服务已启动")
-            self.status_label.setText(f"状态: 服务运行中 - 端口 {self.config_manager.get_config('port')}")
+                self.notification.show_success("WebDAV service started successfully")
+            self.status_label.setText(f"Status: Service running - Port {self.config_manager.get_config('port')}")
             self.status_label.setStyleSheet("color: #28a745; font-size: 12px; font-weight: bold;")
         else:
             if self.notification:
-                self.notification.show_error(f"服务启动失败")
-            QMessageBox.critical(self, "启动失败", error_msg)
+                self.notification.show_error(f"Failed to start service: {error_msg}")
+            QMessageBox.critical(self, "Start Failed", error_msg)
 
         self.update_button_states()
 
     def stop_service(self):
         """停止服务"""
         if self.notification:
-            self.notification.show_info("正在停止服务...", duration=1500)
+            self.notification.show_info("Stopping WebDAV service...", duration=1500)
 
         success, error_msg = self.service_manager.stop_service()
 
@@ -365,12 +380,12 @@ class WebDAVManagerUI(QMainWindow):
         """显示停止结果"""
         if success:
             if self.notification:
-                self.notification.show_success("服务已停止")
-            self.status_label.setText("状态: 服务未启动")
+                self.notification.show_success("WebDAV service stopped successfully")
+            self.status_label.setText("Status: Service not running")
             self.status_label.setStyleSheet("color: #666; font-size: 12px;")
         else:
             if self.notification:
-                self.notification.show_error("服务停止失败")
+                self.notification.show_error(f"Failed to stop service: {error_msg}")
 
         self.update_button_states()
 
@@ -378,7 +393,7 @@ class WebDAVManagerUI(QMainWindow):
         """复制访问URL到剪贴板"""
         if not self.service_manager.get_status():
             if self.notification:
-                self.notification.show_warning("服务未启动")
+                self.notification.show_warning("WebDAV service not started")
             return
 
         # 获取本机IP
@@ -402,14 +417,14 @@ class WebDAVManagerUI(QMainWindow):
         clipboard.setText(url)
 
         if self.notification:
-            self.notification.show_success(f"已复制: {url}")
+            self.notification.show_success(f"WebDAV service URL copied to clipboard successfully: {url}")
 
     def open_directory(self):
         """打开共享目录"""
         share_dir = self.dir_edit.text().strip()
         if not share_dir or not os.path.exists(share_dir):
             if self.notification:
-                self.notification.show_warning("共享目录不存在")
+                self.notification.show_warning("WebDAV service directory not found")
             return
 
         try:
@@ -421,18 +436,18 @@ class WebDAVManagerUI(QMainWindow):
                 subprocess.run(['xdg-open', share_dir])
 
             if self.notification:
-                self.notification.show_success("已打开目录")
+                self.notification.show_success("WebDAV service directory opened successfully")
         except Exception as e:
             if self.notification:
-                self.notification.show_error("打开目录失败")
-            logger.error(f"打开目录失败: {e}")
+                self.notification.show_error(f"Failed to open directory: {e}")
+            logger.error(f"Failed to open directory: {e}")
 
     def view_log(self):
         """查看日志文件"""
         log_file = './data/webdav.log'
         if not os.path.exists(log_file):
             if self.notification:
-                self.notification.show_warning("日志文件不存在")
+                self.notification.show_warning("WebDAV service log file not found")
             return
 
         try:
@@ -444,11 +459,11 @@ class WebDAVManagerUI(QMainWindow):
                 subprocess.run(['xdg-open', log_file])
 
             if self.notification:
-                self.notification.show_success("已打开日志")
+                self.notification.show_success("WebDAV service log file opened successfully")
         except Exception as e:
             if self.notification:
-                self.notification.show_error("打开日志失败")
-            logger.error(f"打开日志失败: {e}")
+                self.notification.show_error(f"Failed to open log: {e}")
+            logger.error(f"Failed to open log: {e}")
 
     def update_button_states(self):
         """更新按钮状态"""

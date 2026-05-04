@@ -35,14 +35,14 @@ class ConfigManager:
                 with open(self.CONFIG_FILE, 'r', encoding='utf-8') as f:
                     loaded_config = json.load(f)
                     self.config.update(loaded_config)
-                    logger.info("配置文件加载成功")
+                    logger.info("Config file loaded successfully")
             else:
-                logger.info("配置文件不存在,使用默认配置")
+                logger.info("Config file not found, using default configuration")
         except json.JSONDecodeError as e:
-            logger.error(f"配置文件JSON解析失败: {e}")
+            logger.error(f"Failed to parse config file JSON: {e}")
             self.reset_config()
         except Exception as e:
-            logger.error(f"配置文件加载失败: {e}")
+            logger.error(f"Failed to load config file: {e}")
             self.reset_config()
 
     def save_config(self):
@@ -51,10 +51,10 @@ class ConfigManager:
             self.config['last_update'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             with open(self.CONFIG_FILE, 'w', encoding='utf-8') as f:
                 json.dump(self.config, f, indent=4, ensure_ascii=False)
-            logger.info("配置已保存")
+            logger.info("Config saved")
             return True
         except Exception as e:
-            logger.error(f"配置保存失败: {e}")
+            logger.error(f"Failed to save config: {e}")
             return False
 
     def reset_config(self):
@@ -66,7 +66,7 @@ class ConfigManager:
             'password': '',
             'last_update': ''
         }
-        logger.warning("配置已重置为默认值")
+        logger.warning("Config reset to default values")
 
     def validate_config(self):
         """
@@ -78,42 +78,42 @@ class ConfigManager:
         # 验证共享目录
         share_dir = self.config.get('share_dir', '').strip()
         if not share_dir:
-            errors.append("共享目录不能为空")
+            errors.append("Share directory cannot be empty")
         elif not os.path.exists(share_dir):
-            errors.append(f"共享目录不存在: {share_dir}")
+            errors.append(f"Share directory does not exist: {share_dir}")
         elif not os.path.isdir(share_dir):
-            errors.append(f"共享路径不是目录: {share_dir}")
+            errors.append(f"Share path is not a directory: {share_dir}")
         else:
             # 检查读写权限
             if not os.access(share_dir, os.R_OK):
-                errors.append(f"共享目录无读取权限: {share_dir}")
+                errors.append(f"No read permission for share directory: {share_dir}")
             if not os.access(share_dir, os.W_OK):
-                errors.append(f"共享目录无写入权限: {share_dir}")
+                errors.append(f"No write permission for share directory: {share_dir}")
 
         # 验证端口
         try:
             port = int(self.config.get('port', 0))
             if port < 1025 or port > 65535:
-                errors.append("端口必须在 1025-65535 范围内")
+                errors.append("Port must be in range 1025-65535")
         except (ValueError, TypeError):
-            errors.append("端口必须是有效的数字")
+            errors.append("Port must be a valid number")
 
         # 验证用户名
         username = self.config.get('username', '').strip()
         if not username:
-            errors.append("访问账号不能为空")
+            errors.append("Username cannot be empty")
 
         # 验证密码
         password = self.config.get('password', '').strip()
         if not password:
-            errors.append("访问密码不能为空")
+            errors.append("Password cannot be empty")
 
         is_valid = len(errors) == 0
 
         if is_valid:
-            logger.info("配置验证通过")
+            logger.info("Config validation passed")
         else:
-            logger.warning(f"配置验证失败: {'; '.join(errors)}")
+            logger.warning(f"Config validation failed: {'; '.join(errors)}")
 
         return is_valid, errors
 
@@ -130,12 +130,12 @@ class ConfigManager:
             sock.close()
 
             if result == 0:
-                logger.warning(f"端口 {port} 可能已被占用")
-                return False, f"端口 {port} 可能已被占用,请尝试其他端口"
+                logger.warning(f"Port {port} may already be in use")
+                return False, f"Port {port} may already be in use, please try another port"
             else:
                 return True, ""
         except Exception as e:
-            logger.error(f"端口检查失败: {e}")
+            logger.error(f"Port check failed: {e}")
             return True, ""  # 检查失败时不阻止使用
 
     def create_directory(self, path):
@@ -145,10 +145,10 @@ class ConfigManager:
         """
         try:
             os.makedirs(path, exist_ok=True)
-            logger.info(f"目录创建成功: {path}")
+            logger.info(f"Directory created successfully: {path}")
             return True, ""
         except Exception as e:
-            error_msg = f"目录创建失败: {str(e)}"
+            error_msg = f"Failed to create directory: {str(e)}"
             logger.error(error_msg)
             return False, error_msg
 

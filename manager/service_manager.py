@@ -29,10 +29,10 @@ class ServiceManager:
         返回: (是否成功, 错误消息)
         """
         if self.is_running:
-            return False, "服务已在运行中"
+            return False, "WebDAV service is already running"
 
         try:
-            logger.info("正在启动WebDAV服务...")
+            logger.info("Starting WebDAV service...")
 
             # 保存配置
             self.current_config = config
@@ -78,12 +78,12 @@ class ServiceManager:
 
             self.is_running = True
 
-            logger.info(f"WebDAV服务已启动 - 端口: {config['port']}, 目录: {config['share_dir']}")
+            logger.info(f"WebDAV service started - Port: {config['port']}, Directory: {config['share_dir']}")
             return True, ""
 
         except Exception as e:
-            error_msg = f"服务启动失败: {str(e)}"
-            logger.error(error_msg, exc_info=True)
+            error_msg = f"Failed to start service: {str(e)}"
+            logger.error(f"Failed to start service: {str(e)}", exc_info=True)
             self.is_running = False
             self.server = None
             return False, error_msg
@@ -93,7 +93,7 @@ class ServiceManager:
         try:
             self.server.start()
         except Exception as e:
-            logger.error(f"服务器运行异常: {e}", exc_info=True)
+            logger.error(f"Server running error: {e}", exc_info=True)
             self.is_running = False
 
     def stop_service(self):
@@ -102,10 +102,10 @@ class ServiceManager:
         返回: (是否成功, 错误消息)
         """
         if not self.is_running:
-            return False, "服务未运行"
+            return False, "WebDAV service is not running"
 
         try:
-            logger.info("正在停止WebDAV服务...")
+            logger.info("Stopping WebDAV service...")
 
             if self.server:
                 self.server.stop()
@@ -113,13 +113,12 @@ class ServiceManager:
 
             self.is_running = False
             self.current_config = None
-
-            logger.info("WebDAV服务已停止")
+            logger.info("WebDAV service stopped")
             return True, ""
 
         except Exception as e:
-            error_msg = f"服务停止失败: {str(e)}"
-            logger.error(error_msg, exc_info=True)
+            error_msg = f"Failed to stop service: {str(e)}"
+            logger.error(f"Failed to stop service: {str(e)}", exc_info=True)
             return False, error_msg
 
     def get_status(self):
@@ -129,6 +128,7 @@ class ServiceManager:
     def get_access_url(self):
         """获取访问URL"""
         if self.current_config:
+            ip = self.current_config.get('ip', '127.0.0.1')
             port = self.current_config.get('port', 8088)
-            return f"http://[您的IP地址]:{port}/"
+            return f"http://{ip}:{port}/"
         return ""

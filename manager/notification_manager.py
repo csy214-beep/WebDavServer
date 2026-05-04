@@ -102,7 +102,7 @@ class ToastNotification(QLabel):
         if duration > 0:
             self.hide_timer.start(duration)
 
-        logger.info(f"Toast通知 [{msg_type}]: {message}")
+        logger.info(f"Toast notification [{msg_type}]: {message}")
 
     def fade_in(self):
         """淡入动画"""
